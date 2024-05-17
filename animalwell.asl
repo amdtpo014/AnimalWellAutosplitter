@@ -26,8 +26,16 @@ startup {
 
     settings.Add("item1", false, "Firecracker", "item_group");
     settings.Add("item2", false, "Flute", "item_group");
+    settings.Add("item3", false, "Lantern", "item_group");
+    settings.Add("item4", false, "Top", "item_group");
     settings.Add("item5", false, "Disc", "item_group");
     settings.Add("item6", false, "Bubble Wand", "item_group");
+    settings.Add("item7", false, "Yo-yo", "item_group");
+    settings.Add("item8", false, "Slink", "item_group");
+    settings.Add("item9", false, "Remote", "item_group");
+    settings.Add("item10", false, "Bouncy ball", "item_group");
+    settings.Add("item11", false, "Wheel", "item_group");
+    settings.Add("item12", false, "UV Light", "item_group");
 
     settings.Add("ending_group", true, "Split on Endings");
 
@@ -48,11 +56,19 @@ onReset {
 
 split {
     // Each item comparison is a bit mask that checks if the specific bit corresponding to the relevant item
-    // is currently 1 and was previously 0
+    // is currently 1 and was previously 0. Should re-implement this as a loop in the future.
     return (settings["item1"] && (current.file1MainItems & 0x2) != 0 && (old.file1MainItems & 0x2) == 0
             || settings["item2"] && (current.file1MainItems & 0x4) != 0 && (old.file1MainItems & 0x4) == 0
+            || settings["item3"] && (current.file1MainItems & 0x8) != 0 && (old.file1MainItems & 0x8) == 0
+            || settings["item4"] && (current.file1MainItems & 0x10) != 0 && (old.file1MainItems & 0x10) == 0
             || settings["item5"] && (current.file1MainItems & 0x20) != 0 && (old.file1MainItems & 0x20) == 0 && !vars.discTaken
             || settings["item6"] && (current.file1MainItems & 0x40) != 0 && (old.file1MainItems & 0x40) == 0
+            || settings["item7"] && (current.file1MainItems & 0x80) != 0 && (old.file1MainItems & 0x80) == 0
+            || settings["item8"] && (current.file1MainItems & 0x100) != 0 && (old.file1MainItems & 0x100) == 0
+            || settings["item9"] && (current.file1MainItems & 0x200) != 0 && (old.file1MainItems & 0x200) == 0
+            || settings["item10"] && (current.file1MainItems & 0x400) != 0 && (old.file1MainItems & 0x400) == 0
+            || settings["item11"] && (current.file1MainItems & 0x800) != 0 && (old.file1MainItems & 0x800) == 0
+            || settings["item12"] && (current.file1MainItems & 0x1000) != 0 && (old.file1MainItems & 0x1000) == 0
             
             || settings["any_end"] && current.endTrigger && !old.endTrigger);
 }
