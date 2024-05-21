@@ -1,19 +1,29 @@
+// ANIMAL WELL AUTOSPLITTER, created by talia
+// Special thanks to Cursed and Marlin for early testing, and to the save decoding datamining thread
+
 state("Animal Well") {
     // IGT counted in frames (60fps)
-    int file1Timer : 0x02D43958, 0x5D8;
+    uint file1Timer : 0x02BFD308, 0x5D8;
 
     // Integer representation of a binary string signifying main item progress
     // Item bit positions correspond to their placements in the inventory menu PLUS ONE
     // (At least that's what was consistent with what I tested:
     // firecracker = 1(2), flute = 2(4), disc = 5(32), wand = 6(64))
-    int file1MainItems : 0x02D43958, 0x5F4;
+    uint file1MainItems : 0x02BFD308, 0x5F4;
+
+    // Integer representations the 4 bytes signifying progress of all 4 flames
+    // Each byte information is as follows:
+    // Sealed flame = 0, crack progress = 1 to 3 (meaning broken), collected = 4, used = 5
+    // Thanks to https://github.com/Kein/awsgtools for having already documented this
+    uint file1FlameProgress : 0x02BFD308, 0x636;
 
     // Any% end trigger, becomes true when the final time pops on screen after detonation
     // Currently desynced by a frame or so, but should be whatever since final time is displayed anyway
-    bool endTrigger : 0xCA9E84, 0x10, 0x28, 0xF68, 0x894;
+    // (BROKEN AT THE MOMENT)
+    // bool endTrigger : 0xCA9E84, 0x10, 0x28, 0xF68, 0x894;
 
-    // True if game is being played in any file, false if game is in main menu.
-    bool isInGame : 0x29A0A04;
+    // True if game is being played in any file, false if game is in main menu
+    bool isInGame : 0x29A5984;
 }
 
 startup {
@@ -37,9 +47,16 @@ startup {
     settings.Add("item11", false, "Wheel", "item_group");
     settings.Add("item12", false, "UV Light", "item_group");
 
-    settings.Add("ending_group", true, "Split on Endings");
+    settings.Add("flame_group", true, "Split on Flames");
 
-    settings.Add("any_end", true, "Normal (Any%) Ending", "ending_group");
+    settings.Add("flame1", false, "B. Flame (Seahorse)", "flame_group");
+    settings.Add("flame2", false, "P. Flame (Cat/dog Ghost)", "flame_group");
+    settings.Add("flame3", false, "G. Flame (Chameleon)", "flame_group");
+    settings.Add("flame4", false, "V. Flame (Ostrich)", "flame_group");
+
+    // settings.Add("ending_group", true, "Split on Endings");
+
+    // settings.Add("any_end", true, "Normal (Any%) Ending", "ending_group");
 }
 
 start {
@@ -57,20 +74,27 @@ onReset {
 split {
     // Each item comparison is a bit mask that checks if the specific bit corresponding to the relevant item
     // is currently 1 and was previously 0. Should re-implement this as a loop in the future.
-    return (settings["item1"] && (current.file1MainItems & 0x2) != 0 && (old.file1MainItems & 0x2) == 0
-            || settings["item2"] && (current.file1MainItems & 0x4) != 0 && (old.file1MainItems & 0x4) == 0
-            || settings["item3"] && (current.file1MainItems & 0x8) != 0 && (old.file1MainItems & 0x8) == 0
-            || settings["item4"] && (current.file1MainItems & 0x10) != 0 && (old.file1MainItems & 0x10) == 0
-            || settings["item5"] && (current.file1MainItems & 0x20) != 0 && (old.file1MainItems & 0x20) == 0 && !vars.discTaken
-            || settings["item6"] && (current.file1MainItems & 0x40) != 0 && (old.file1MainItems & 0x40) == 0
-            || settings["item7"] && (current.file1MainItems & 0x80) != 0 && (old.file1MainItems & 0x80) == 0
-            || settings["item8"] && (current.file1MainItems & 0x100) != 0 && (old.file1MainItems & 0x100) == 0
-            || settings["item9"] && (current.file1MainItems & 0x200) != 0 && (old.file1MainItems & 0x200) == 0
-            || settings["item10"] && (current.file1MainItems & 0x400) != 0 && (old.file1MainItems & 0x400) == 0
-            || settings["item11"] && (current.file1MainItems & 0x800) != 0 && (old.file1MainItems & 0x800) == 0
-            || settings["item12"] && (current.file1MainItems & 0x1000) != 0 && (old.file1MainItems & 0x1000) == 0
-            
-            || settings["any_end"] && current.endTrigger && !old.endTrigger);
+    bool itemCheck = false;
+    for (int i = 1; i <= 12; i++) { // 1-indexed loop, the horrors
+        // Special condition for using discTaken on disc check
+        bool discExtraCondition = i == 5 ? !vars.discTaken : true;
+        itemCheck |= settings["item"+i] 
+            && (current.file1MainItems & (1 << i)) != 0 
+            && (old.file1MainItems & (1 << i)) == 0
+            && discExtraCondition;
+    }
+
+    // Each flame comparison looks at a different byte in the uint, checking if it was collected
+    // (equal to 4)
+    bool flameCheck = false;
+    for (int i = 0; i < 4; i++) {
+        flameCheck |= settings["flame"+(i+1)]
+            && ((current.file1FlameProgress >> i*8) & 0xff) == 4
+            && ((old.file1FlameProgress >> i*8) & 0xff) != 4;
+    }
+
+    return itemCheck || flameCheck;
+    // || settings["any_end"] && current.endTrigger && !old.endTrigger);
 }
 
 onSplit {
